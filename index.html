@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 MLB Season Standings Predictions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        .division-card { background: white; border-radius: 12px; padding: 1rem; color: #1e293b; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .team-row { display: grid; grid-template-columns: 1fr 45px 10px 45px; align-items: center; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+        .team-row:last-child { border-bottom: none; }
+        
+        input[type="number"] { width: 45px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; text-align: center; font-weight: 800; color: #1e3a8a; -moz-appearance: textfield; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .loss-display { font-weight: 800; color: #94a3b8; text-align: center; }
+        .dash { color: #cbd5e1; font-weight: bold; text-align: center; font-size: 0.8rem; }
+        
+        .grid-container { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+        @media (min-width: 768px) { .grid-container { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 1024px) { .grid-container { grid-template-columns: repeat(3, 1fr); } }
+
+        /* Hidden helper for screenshot rendering */
+        #ws-winner-display { display: none; }
+
+        /* Screenshot Force 3x2 Grid and Special WS View */
+        .force-grid { width: 1100px !important; display: block !important; padding: 40px !important; }
+        .force-grid .grid-container { grid-template-columns: repeat(3, 1fr) !important; gap: 15px !important; }
+        
+        /* Hide UI dropdown in capture, show display element instead */
+        .force-grid #ws-winner-ui { display: none !important; }
+        .force-grid #ws-winner-display { display: flex !important; }
+
+        select { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 10px 16px; border-radius: 8px; color: white; font-weight: bold; outline: none; cursor: pointer; transition: all 0.2s; -webkit-appearance: none; -moz-appearance: none; }
+        select:hover { background: rgba(255,255,255,0.2); }
+        option { color: black; }
+    </style>
+</head>
+<body class="bg-slate-100 pb-20">
+
+    <div class="max-w-6xl mx-auto py-8 px-4">
+        <div class="text-center mb-8 no-print">
+            <h1 class="text-4xl font-black text-blue-900 mb-2 italic tracking-tighter uppercase">2026 MLB STANDINGS PREDICTIONS</h1>
+            
+            
+            <div class="mt-6 flex flex-col sm:flex-row justify-center gap-3">
+                <input type="text" id="username" placeholder="Your Name" 
+                       class="p-3 border-2 border-white rounded-xl w-64 shadow-sm outline-none focus:border-blue-400 font-bold" 
+                       oninput="updateTitle()">
+                <button onclick="resetAll()" class="px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <div id="capture-area" class="bg-blue-950 p-6 md:p-10 rounded-[2.5rem] shadow-2xl text-white">
+            <h2 id="prediction-title" class="text-2xl md:text-3xl font-black text-center mb-10 uppercase italic tracking-tighter leading-tight">
+                2026 MLB Standings Predictions
+            </h2>
+            
+            <div id="mlb-grid" class="grid-container">
+                </div>
+
+            <div class="mt-14 pt-10 border-t border-blue-900/50 flex flex-col items-center">
+                <h3 class="text-blue-300 font-black uppercase tracking-widest text-xs mb-4">2026 World Series Winner</h3>
+                
+                <select id="ws-winner-ui" class="w-full max-w-xs text-center text-lg" onchange="updateWSDisplay(this)">
+                    <option value="">Select a Team...</option>
+                </select>
+
+                <div id="ws-winner-display" class="flex-col items-center gap-4 text-center">
+                    <img id="ws-logo" src="" class="w-24 h-24" alt="">
+                    <span id="ws-name" class="text-4xl font-black italic tracking-tighter text-white uppercase leading-tight"></span>
+                </div>
+            </div>
+
+            <div class="mt-14 text-center">
+                <p class="text-[11px] font-black uppercase tracking-[0.4em] text-blue-400/60">
+                    MLB Standings Predictions Tool. Made by Nate Martin @natemart10 (Lets go Blue Jays)
+                </p>
+            </div>
+        </div>
+
+        <div class="mt-10 text-center">
+            <button id="share-btn" onclick="generateScreenshot()" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-12 rounded-full text-xl shadow-xl transition-all active:scale-95 transform hover:-translate-y-1">
+                Download Screenshot of Predictions
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const divisions = [
+            { id: "ale", name: "AL East", teams: [{id:147, n:"Yankees"}, {id:110, n:"Orioles"}, {id:141, n:"Blue Jays"}, {id:111, n:"Red Sox"}, {id:139, n:"Rays"}] },
+            { id: "alc", name: "AL Central", teams: [{id:114, n:"Guardians"}, {id:118, n:"Royals"}, {id:116, n:"Tigers"}, {id:142, n:"Twins"}, {id:145, n:"White Sox"}] },
+            { id: "alw", name: "AL West", teams: [{id:117, n:"Astros"}, {id:136, n:"Mariners"}, {id:140, n:"Rangers"}, {id:108, n:"Angels"}, {id:133, n:"Athletics"}] },
+            { id: "nle", name: "NL East", teams: [{id:144, n:"Braves"}, {id:143, n:"Phillies"}, {id:121, n:"Mets"}, {id:120, n:"Nationals"}, {id:146, n:"Marlins"}] },
+            { id: "nlc", name: "NL Central", teams: [{id:158, n:"Brewers"}, {id:112, n:"Cubs"}, {id:138, n:"Cardinals"}, {id:113, n:"Reds"}, {id:134, n:"Pirates"}] },
+            { id: "nlw", name: "NL West", teams: [{id:119, n:"Dodgers"}, {id:109, n:"D-backs"}, {id:135, n:"Padres"}, {id:137, n:"Giants"}, {id:115, n:"Rockies"}] }
+        ];
+
+        function render() {
+            const grid = document.getElementById('mlb-grid');
+            const wsDropdown = document.getElementById('ws-winner-ui');
+            grid.innerHTML = '';
+            wsDropdown.innerHTML = '<option value="">Select a Team...</option>'; // Clear for reset
+
+            const allTeams = [];
+
+            divisions.forEach(div => {
+                let html = `<div class="division-card" id="div-${div.id}">
+                    <h3 class="font-black text-blue-900 border-b-2 border-slate-100 mb-2 pb-1 italic uppercase text-sm">${div.name}</h3>
+                    <div class="grid grid-cols-[1fr_45px_10px_45px] text-[9px] font-black text-slate-400 mb-1 text-center">
+                        <div class="text-left pl-1">TEAM</div><div>W</div><div></div><div>L</div>
+                    </div>
+                    <div class="team-list">`;
+                div.teams.forEach(team => {
+                    allTeams.push(team);
+                    const logoUrl = `https://www.mlbstatic.com/team-logos/${team.id}.svg`;
+                    html += `
+                    <div class="team-row" data-wins="0">
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <img src="${logoUrl}" class="w-6 h-6 flex-shrink-0" alt="">
+                            <span class="font-bold text-[11px] truncate">${team.n}</span>
+                        </div>
+                        <div><input type="number" min="0" max="162" placeholder="0" onchange="updateRecord(this)"></div>
+                        <div class="dash">-</div>
+                        <div class="loss-display">0</div>
+                    </div>`;
+                });
+                html += `</div></div>`;
+                grid.innerHTML += html;
+            });
+
+            // Populate World Series Dropdown with Values (Team IDs)
+            allTeams.sort((a,b) => a.n.localeCompare(b.n)).forEach(team => {
+                const opt = document.createElement('option');
+                opt.value = team.id; // Crucial for pulling logo
+                opt.innerText = team.n;
+                wsDropdown.appendChild(opt);
+            });
+        }
+
+        function updateRecord(input) {
+            const wins = Math.min(162, Math.max(0, parseInt(input.value) || 0));
+            input.value = input.value ? wins : "";
+            const row = input.closest('.team-row');
+            const lossDisplay = row.querySelector('.loss-display');
+            lossDisplay.innerText = input.value ? (162 - wins) : "0";
+            row.setAttribute('data-wins', wins);
+
+            const list = row.closest('.team-list');
+            const rows = Array.from(list.querySelectorAll('.team-row'));
+            rows.sort((a, b) => parseInt(b.getAttribute('data-wins')) - parseInt(a.getAttribute('data-wins')));
+            rows.forEach(r => list.appendChild(r));
+        }
+
+        function updateWSDisplay(dropdown) {
+            const teamId = dropdown.value;
+            const teamName = dropdown.options[dropdown.selectedIndex].text;
+            const displayArea = document.getElementById('ws-winner-display');
+            const wsLogo = document.getElementById('ws-logo');
+            const wsName = document.getElementById('ws-name');
+
+            if (teamId) {
+                wsLogo.src = `https://www.mlbstatic.com/team-logos/${teamId}.svg`;
+                wsName.innerText = teamName;
+            } else {
+                // If nothing selected, empty the display just in case
+                wsLogo.src = "";
+                wsName.innerText = "";
+            }
+        }
+
+        function updateTitle() {
+            const name = document.getElementById('username').value;
+            document.getElementById('prediction-title').innerText = name ? `${name}'s 2026 MLB Standings Predictions` : "2026 MLB Standings Predictions";
+        }
+
+        async function generateScreenshot() {
+            // Check if WS winner is selected
+            if (!document.getElementById('ws-winner-ui').value) {
+                alert("Please select a World Series Winner before downloading!");
+                return;
+            }
+
+            const btn = document.getElementById('share-btn');
+            const node = document.getElementById('capture-area');
+            btn.innerText = "Generating PNG...";
+            btn.disabled = true;
+
+            // Step 1: Force screenshot layout (3x2, hide dropdown, show formatted text)
+            node.classList.add('force-grid');
+
+            // Small timeout to allow images to load into hidden mirror element
+            setTimeout(() => {
+                htmlToImage.toPng(node, {
+                    quality: 1,
+                    pixelRatio: 2,
+                    backgroundColor: '#020617'
+                })
+                .then(function (dataUrl) {
+                    const link = document.createElement('a');
+                    link.download = '2026-mlb-predictions.png';
+                    link.href = dataUrl;
+                    link.click();
+                    
+                    // Step 3: Snap back to mobile view
+                    node.classList.remove('force-grid');
+                    btn.innerText = "Download Prediction";
+                    btn.disabled = false;
+                })
+                .catch(function (error) {
+                    console.error('Capture failed!', error);
+                    node.classList.remove('force-grid');
+                    btn.innerText = "Download Prediction";
+                    btn.disabled = false;
+                });
+            }, 300); // 300ms delay to ensure WS logo loads
+        }
+
+        function resetAll() { 
+            if(confirm("Clear your board?")) { 
+                render(); 
+                updateTitle(); 
+                document.getElementById('ws-winner-display').style.display = 'none'; // Ensure display hidden on reset
+            } 
+        }
+        
+        render();
+    </script>
+</body>
+</html>
